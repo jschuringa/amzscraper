@@ -3,34 +3,38 @@ import json
 from bs4 import BeautifulSoup
 
 class ParsedField():
-    def __init__(self, name, tagType, className):
-        self.tagType = tagType
-        self.className = className
+    def __init__(self, name, tag_type, attr_name, attr="class"):
+        self.tag_type = tag_type
+        self.attr_name = attr_name
         self.name = name
+        self.attr = attr
 
 # I don't think I necessarily need this object anymore, since I'm using setattr
 # but is probably useful for testing
 class ParsedReview(object):
     title = ""
-    text = ""
+    content = ""
     author = ""
     stars = 0
     date = ""
-    recommended = False
-    loanType = ""
-    reviewType = ""
-    closedWith = False
     failed = False
     error = ""
+
+    def get_required_field(self, name, element):
+            if(element is None):
+                raise Exception(f"No field found with the name '{name}'. Cannot parse review, '{name}' is a required field.")
+            else:
+                if len(element.contents) == 0:
+                    raise Exception(f"No contents found in field '{name}'.")
+                return element.contents[0]
+
+    def build_report_item(self, fields, source):
+        for field in fields:
+            setattr(self, field.name, self.get_required_field(field.name, source.find(field.tag_type, {field.attr: field.attr_name})))
 
 class ReviewReport:
     def __init__(self, reviews):
         self.reviews = reviews
-        if(len(reviews) > 0):
-            self.totalReviews = len(reviews)
-            self.totalPositive = sum(1 for review in reviews if review.stars >= 3)
-            self.totalNegative = sum(1 for review in reviews if review.stars < 3)
-            self.avgStars = sum(review.stars for review in reviews) / self.totalReviews
 
     # I saw a few ways to create json for a complex object, this seemed the easiest
     # without additional dependencies
@@ -38,64 +42,31 @@ class ReviewReport:
         return json.dumps(self, default=lambda o: o.__dict__, 
             sort_keys=True, indent=4)
 
-# takes in the list of required fields and html source, and sets the required field on the parsed review object
-# keeps all the individual tag selection in one place (besides special cases)
-def buildReportItem(review, fields, source):
-    for field in fields:
-        setattr(review, field.name, getRequiredField(field.name, source.find(field.tagType, {"class": field.className})))
-    return review
-
-# if the element does not exist or does not have content, raises an error for the required field.
-def getRequiredField(name, element):
-    if(element is None):
-        raise Exception(f"No field found with the name '{name}'. Cannot parse review, '{name}' is a required field.")
-    else:
-        if len(element.contents) == 0:
-            raise Exception(f"No contents found in field '{name}'.")
-        return element.contents[0]
-
 # reads the html from a (assumed valid) url, and parses the field data from them
 # handles errors for each review and sets error/failed field. This isn't necessarily
 # useful from an API standpoint, but it felt weird just letting raised exceptions
 # fall into the abyss, and it didn't make sense to end parsing just because one 
 # field/review failed
-def parseReviewsFromUrl(url):
+def parse_reviews(url, all_pages):
     fields = [
-        ParsedField("title", "p", "reviewTitle"),
-        ParsedField("content", "p", "reviewText"),
-        ParsedField("author", "p", "consumerName"),
-        ParsedField("date", "p", "consumerReviewDate"),
+        ParsedField("title", "a", "review-title", "data-hook"),
+        ParsedField("date", "span", "review-date", "data-hook"),
+        ParsedField("content", "span", "review-body", "data-hook"),
+        ParsedField("author", "span", "a-profile-name"),
     ]
 
-    parsedReviews = []
+    parsed_reviews = []
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html5lib")
-    reviews = soup.findAll("div", {"class": "mainReviews"})
+    review_items = soup.findAll("div", {"data-hook": "review"})
 
-    for review in reviews:
-        thisReview = ParsedReview()
+    for review in review_items:
+        this_review = ParsedReview()
         try:
-            thisReview = buildReportItem(thisReview, fields, review)
-            starsEl = review.find("div", {"class": "numRec"})
-            if starsEl is None:
-                raise Exception("No stars field found, stars is a required field to parse a review.")
-            else:
-                thisReview.stars = int(starsEl.contents[0][1])
-            thisReview.recommended = review.find("div", {"class": "lenderRec"}) is not None
-            thisReview.closedWith = review.find("p", {"class": "yes"}) is not None
-            try:
-                listItems = review.findAll("div", {"class": "loanType"})
-                if len(listItems) == 2:
-                    thisReview.loanType = listItems[0].contents[0]
-                    thisReview.reviewType = listItems[1].contents[0]
-            except:
-                thisReview.failed = True
-                thisReview.error = "Failed to parse loan type and review type."
-            parsedReviews.append(thisReview)
+            this_review = build_report_item(thisReview, fields, review)
+            parsed_reviews.append(this_review)
         except Exception as e:
-            thisReview.failed = True
-            thisReview.error = e
+            this_review.failed = True
+            this_review.error = e
 
-    report = ReviewReport(parsedReviews)
-
-    return report
+    return ReviewReport(parsed_reviews)

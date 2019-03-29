@@ -1,3 +1,3 @@
 # amzscraper
 
-Utility to scrape review data from an amazong product page
+Utility to scrape review data from an amazon product review page
