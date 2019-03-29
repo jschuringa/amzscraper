@@ -9,7 +9,7 @@ def get_reviews():
     url = request.form['url']
     all_pages = request.form['allPages']
     parsed_url = urlparse(url)
-    if parsed_url.netloc != "www.amazon.com" or not parsed_url.path.contains("/product-reviews/") :
+    if parsed_url.netloc != "www.amazon.com" or "/product-reviews/" not in parsed_url.path:
         abort(400, "Must be an amazon review page")
     try:
         results = parse_reviews(url, all_pages)

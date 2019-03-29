@@ -63,7 +63,7 @@ def parse_reviews(url, all_pages):
     for review in review_items:
         this_review = ParsedReview()
         try:
-            this_review = build_report_item(thisReview, fields, review)
+            this_review.build_report_item(fields, review)
             parsed_reviews.append(this_review)
         except Exception as e:
             this_review.failed = True
