@@ -34,6 +34,7 @@ class ParsedReview(object):
         review = ParsedReview()
         for field in fields:
             setattr(review, field.name, ParsedReview.get_required_field(field.name, source.find(field.tag_type, {field.attr: field.attr_name})))
+        return review
 
 class ReviewReport:
     def __init__(self, reviews):
@@ -59,8 +60,8 @@ def parse_reviews(url, all_pages):
     ]
 
     parsed_reviews = []
-    user_agent = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36'}
-    response = requests.get(url, headers=user_agent)
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+    response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.text, "html5lib")
     review_items = soup.findAll("div", {"data-hook": "review"})
 
