@@ -20,7 +20,8 @@ class ParsedReview(object):
     failed = False
     error = ""
 
-    def get_required_field(self, name, element):
+    @staticmethod
+    def get_required_field(name, element):
             if(element is None):
                 raise Exception(f"No field found with the name '{name}'. Cannot parse review, '{name}' is a required field.")
             else:
@@ -28,9 +29,11 @@ class ParsedReview(object):
                     raise Exception(f"No contents found in field '{name}'.")
                 return element.contents[0]
 
-    def build_report_item(self, fields, source):
+    @classmethod
+    def build_report_item(cls, fields, source):
+        review = ParsedReview()
         for field in fields:
-            setattr(self, field.name, self.get_required_field(field.name, source.find(field.tag_type, {field.attr: field.attr_name})))
+            setattr(review, field.name, ParsedReview.get_required_field(field.name, source.find(field.tag_type, {field.attr: field.attr_name})))
 
 class ReviewReport:
     def __init__(self, reviews):
@@ -56,14 +59,14 @@ def parse_reviews(url, all_pages):
     ]
 
     parsed_reviews = []
-    response = requests.get(url)
+    user_agent = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.90 Safari/537.36'}
+    response = requests.get(url, headers=user_agent)
     soup = BeautifulSoup(response.text, "html5lib")
     review_items = soup.findAll("div", {"data-hook": "review"})
 
     for review in review_items:
-        this_review = ParsedReview()
         try:
-            this_review.build_report_item(fields, review)
+            this_review = ParsedReview.build_report_item(fields, review)
             parsed_reviews.append(this_review)
         except Exception as e:
             this_review.failed = True
