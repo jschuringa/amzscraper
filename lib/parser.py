@@ -60,7 +60,9 @@ def parse_reviews(url, all_pages):
     ]
 
     parsed_reviews = []
-    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+    }
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.text, "html5lib")
     review_items = soup.findAll("div", {"data-hook": "review"})
